@@ -1,0 +1,80 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Simple EKS Cluster for jenkins-argo in ap-south-1
+
+Resources:
+
+  # VPC
+  JenkinsArgoVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: jenkins-argo-vpc
+
+  # Public Subnet
+  JenkinsArgoPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref JenkinsArgoVPC
+      CidrBlock: 10.0.1.0/24
+      AvailabilityZone: ap-south-1a
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: jenkins-argo-public-subnet
+
+  # Internet Gateway
+  JenkinsArgoIGW:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: jenkins-argo-igw
+
+  AttachIGW:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      VpcId: !Ref JenkinsArgoVPC
+      InternetGatewayId: !Ref JenkinsArgoIGW
+
+  # Security Group
+  JenkinsArgoSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: EKS SG
+      VpcId: !Ref JenkinsArgoVPC
+      Tags:
+        - Key: Name
+          Value: jenkins-argo-sg
+
+  # IAM Role for EKS Cluster
+  JenkinsArgoEKSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: jenkins-argo-eks-role
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - eks.amazonaws.com
+            Action:
+              - sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+
+  # EKS Cluster
+  JenkinsArgoEKSCluster:
+    Type: AWS::EKS::Cluster
+    Properties:
+      Name: jenkins-argo-eks-cluster
+      RoleArn: !GetAtt JenkinsArgoEKSRole.Arn
+      ResourcesVpcConfig:
+        SubnetIds:
+          - !Ref JenkinsArgoPublicSubnet
+        SecurityGroupIds:
+          - !Ref JenkinsArgoSG
