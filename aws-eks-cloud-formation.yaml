@@ -1,9 +1,8 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: Simple EKS Cluster for jenkins-argo in ap-south-1
+Description: Minimal EKS Cluster for jenkins-argo
 
 Resources:
 
-  # VPC
   JenkinsArgoVPC:
     Type: AWS::EC2::VPC
     Properties:
@@ -14,8 +13,7 @@ Resources:
         - Key: Name
           Value: jenkins-argo-vpc
 
-  # Public Subnet
-  JenkinsArgoPublicSubnet:
+  PublicSubnet1:
     Type: AWS::EC2::Subnet
     Properties:
       VpcId: !Ref JenkinsArgoVPC
@@ -24,9 +22,19 @@ Resources:
       MapPublicIpOnLaunch: true
       Tags:
         - Key: Name
-          Value: jenkins-argo-public-subnet
+          Value: jenkins-argo-public-1
 
-  # Internet Gateway
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref JenkinsArgoVPC
+      CidrBlock: 10.0.2.0/24
+      AvailabilityZone: ap-south-1b
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: jenkins-argo-public-2
+
   JenkinsArgoIGW:
     Type: AWS::EC2::InternetGateway
     Properties:
@@ -40,7 +48,6 @@ Resources:
       VpcId: !Ref JenkinsArgoVPC
       InternetGatewayId: !Ref JenkinsArgoIGW
 
-  # Security Group
   JenkinsArgoSG:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -50,7 +57,6 @@ Resources:
         - Key: Name
           Value: jenkins-argo-sg
 
-  # IAM Role for EKS Cluster
   JenkinsArgoEKSRole:
     Type: AWS::IAM::Role
     Properties:
@@ -67,7 +73,6 @@ Resources:
       ManagedPolicyArns:
         - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
 
-  # EKS Cluster
   JenkinsArgoEKSCluster:
     Type: AWS::EKS::Cluster
     Properties:
@@ -75,6 +80,7 @@ Resources:
       RoleArn: !GetAtt JenkinsArgoEKSRole.Arn
       ResourcesVpcConfig:
         SubnetIds:
-          - !Ref JenkinsArgoPublicSubnet
+          - !Ref PublicSubnet1
+          - !Ref PublicSubnet2
         SecurityGroupIds:
           - !Ref JenkinsArgoSG
